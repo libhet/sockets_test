@@ -139,14 +139,14 @@ void handle_error(int error) {
 
 
 
-void sender() {
+void sender(std::string message) {
     std::cout << "sender" << std::endl;
 
     char buffer[256] = {0};
 
-    const char * message = "Messge!";
+//    const char * message = "Messge!";
 
-    memcpy(buffer, message, 7);
+    memcpy(buffer, message.c_str(), message.size());
 
     WSAData wsa_data;
 
@@ -161,10 +161,16 @@ void sender() {
     send_addr.sin_addr.S_un.S_un_b.s_b3 = 0;
     send_addr.sin_addr.S_un.S_un_b.s_b4 = 1;
 
-    auto soc = socket(AF_INET, SOCK_DGRAM, IPPROTO_UDP);
+    auto soc = socket(AF_INET, SOCK_STREAM, IPPROTO_TCP);
 
-    function_result = sendto(soc, buffer, 10, 0, (sockaddr*)&send_addr, (int)sizeof(sockaddr_in));
+    function_result = connect(soc, (sockaddr*)&send_addr, sizeof(sockaddr_in));
     handle_error(function_result);
+
+    while(true) {
+        memcpy(buffer, message.c_str(), message.size());
+        function_result = send(soc, buffer, message.size(), 0);
+        handle_error(function_result);
+    }
 
 
     shutdown(soc, SD_BOTH);
@@ -192,27 +198,38 @@ void receiver() {
     my_addr.sin_addr.S_un.S_un_b.s_b2 = 0;
     my_addr.sin_addr.S_un.S_un_b.s_b3 = 0;
     my_addr.sin_addr.S_un.S_un_b.s_b4 = 1;
-    auto soc = socket(AF_INET, SOCK_DGRAM, IPPROTO_UDP);
+    auto soc = socket(AF_INET, SOCK_STREAM, IPPROTO_TCP);
     function_result = bind(soc, (sockaddr*)&my_addr, (int)sizeof(sockaddr_in));
     handle_error(function_result);
 
-    sockaddr_in soc_addr_from;
-    soc_addr_from.sin_family = AF_INET;
-    soc_addr_from.sin_port = htons(1010);
-    soc_addr_from.sin_addr.S_un.S_un_b.s_b1 = 127;
-    soc_addr_from.sin_addr.S_un.S_un_b.s_b2 = 0;
-    soc_addr_from.sin_addr.S_un.S_un_b.s_b3 = 0;
-    soc_addr_from.sin_addr.S_un.S_un_b.s_b4 = 1;
-    int fromlen = sizeof (soc_addr_from);
-
-    function_result = recvfrom(soc, buffer, 255, 0, (sockaddr*)&soc_addr_from, &fromlen);
+    function_result = listen(soc, 2);
     handle_error(function_result);
 
-    std::cout << buffer << std::endl;
+    while(true) {
+        sockaddr connection_addr;
+        int sockaddr_len = sizeof(sockaddr);
+        SOCKET connection_socket = accept(soc, &connection_addr, &sockaddr_len);
+
+
+    //    sockaddr_in soc_addr_from;
+    //    soc_addr_from.sin_family = AF_INET;
+    //    soc_addr_from.sin_port = htons(1010);
+    //    soc_addr_from.sin_addr.S_un.S_un_b.s_b1 = 127;
+    //    soc_addr_from.sin_addr.S_un.S_un_b.s_b2 = 0;
+    //    soc_addr_from.sin_addr.S_un.S_un_b.s_b3 = 0;
+    //    soc_addr_from.sin_addr.S_un.S_un_b.s_b4 = 1;
+    //    int fromlen = sizeof (soc_addr_from);
+
+        function_result = recv(connection_socket, buffer, 255, 0);
+        handle_error(function_result);
+
+        std::cout << buffer << std::endl;
+    }
 
     shutdown(soc, SD_BOTH);
     closesocket(soc);
 }
+
 
 
 int main()
@@ -261,9 +278,13 @@ int main()
 
 
     std::thread t1(receiver);
-    std::this_thread::sleep_for(std::chrono::milliseconds(500));
-    std::thread t2(sender);
+//    std::this_thread::sleep_for(std::chrono::milliseconds(500));
+    std::thread t2(sender, "I'm secod!");
+    std::thread t3(sender, "I'm third!");
+    std::thread t4(sender, "I'm fourth!");
 
     t1.join();
     t2.join();
+    t3.join();
+    t4.join();
 }
