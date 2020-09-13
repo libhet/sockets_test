@@ -8,20 +8,26 @@
 
 
 void sender(std::string message) {
-    char buffer[1024] = {};
+    char buffer[1024] = {0};
     memcpy(buffer, message.c_str(), message.size());
-    auto udp_socket = SocketUtil::CreateUDPSocket(SocketAddressFamily::INET);
+    auto tcp_socket = SocketUtil::CreateTCPSocket(SocketAddressFamily::INET);
     auto address = SocketAddressFactory::CreateIPv4FromString("127.0.0.1:80");
-    udp_socket->SendTo(buffer, message.size(), *address);
+    tcp_socket->Connect(*address);
+    tcp_socket->Send(buffer, message.size());
 }
 
 void receiver() {
     char buffer[1024] = {0};
-    auto udp_socket = SocketUtil::CreateUDPSocket(SocketAddressFamily::INET);
+    auto tcp_socket = SocketUtil::CreateTCPSocket(SocketAddressFamily::INET);
     auto address = SocketAddressFactory::CreateIPv4FromString("127.0.0.1:80");
-    udp_socket->Bind(*address);
-    udp_socket->ReceiveFrom(buffer, 100, *address);
-    std::cout << buffer << std::endl;
+    auto from_address = SocketAddressFactory::CreateEmptyIPv4();
+    tcp_socket->Bind(*address);
+    tcp_socket->Listen();
+    while(true) {
+        auto connection_socket = tcp_socket->Accept(*from_address);
+        connection_socket->Receive(buffer, 100);
+        std::cout << buffer << std::endl;
+    }
 }
 
 

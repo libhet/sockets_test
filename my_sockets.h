@@ -21,6 +21,9 @@ enum SocketAddressFamily
 class UDPSocket;
 typedef std::shared_ptr<UDPSocket> UDPSocketPtr;
 
+class TCPSocket;
+typedef std::shared_ptr<TCPSocket> TCPSocketPtr;
+
 
 class SocketUtil {
 public:
@@ -28,6 +31,7 @@ public:
     static int GetLastError();
     static std::string GetLastErrorText();
     static UDPSocketPtr CreateUDPSocket(SocketAddressFamily inFamily);
+    static TCPSocketPtr CreateTCPSocket(SocketAddressFamily inFamily);
 };
 
 
@@ -41,8 +45,8 @@ public:
     size_t GetSize() const {return sizeof( sockaddr );}
 
 private:
-//    friend class SocketUtil;
     friend class UDPSocket;
+    friend class TCPSocket;
 
     sockaddr mSockAddr;
 
@@ -75,4 +79,20 @@ private:
     SOCKET mSocket;
 };
 
+
+class TCPSocket
+{
+public:
+    ~TCPSocket();
+    int Connect(const SocketAddress& inAddress);
+    int Bind(const SocketAddress& inToAddress);
+    int Listen(int inBackLog = 32);
+    std::shared_ptr<TCPSocket> Accept(SocketAddress& inFromAddress);
+    int Send(const void* inData, int inLen);
+    int Receive(void* inBuffer, int inLen);
+private:
+    friend class SocketUtil;
+    TCPSocket(SOCKET inSocket) : mSocket(inSocket) {}
+    SOCKET mSocket;
+};
 
