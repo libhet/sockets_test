@@ -163,6 +163,60 @@ TCPSocketPtr SocketUtil::CreateTCPSocket(SocketAddressFamily inFamily)
     }
 }
 
+fd_set *SocketUtil::FillSetFromVector(fd_set &outSet, const std::vector<TCPSocketPtr> *inSockets)
+{
+    if(inSockets)
+    {
+        FD_ZERO(&outSet);
+        for(const TCPSocketPtr& socket : *inSockets)
+        {
+            FD_SET(socket->mSocket, &outSet);
+        }
+        return &outSet;
+    }
+    else
+    {
+        return nullptr;
+    }
+}
+
+void SocketUtil::FillVectorFromSet(std::vector<TCPSocketPtr> *outSockets, const std::vector<TCPSocketPtr> *inSockets, const fd_set &inSet)
+{
+    if(inSockets && outSockets)
+    {
+        outSockets->clear();
+        for(const TCPSocketPtr& socket : *inSockets)
+        {
+            if(FD_ISSET(socket->mSocket, &inSet))
+            {
+                outSockets->push_back(socket);
+            }
+        }
+    }
+}
+
+int SocketUtil::Select(const std::vector<TCPSocketPtr> *inReadSet, std::vector<TCPSocketPtr> *outReadSet, const std::vector<TCPSocketPtr> *inWriteSet, std::vector<TCPSocketPtr> *outWriteSet, const std::vector<TCPSocketPtr> *inExceptSet, std::vector<TCPSocketPtr> *outExceptSet)
+{
+    fd_set read, write, except;
+//    memset(&read, 0 , sizeof(fd_set));
+//    memset(&write, 0 , sizeof(fd_set));
+//    memset(&except, 0 , sizeof(fd_set));
+    fd_set *readPtr = FillSetFromVector(read, inReadSet);
+    fd_set *writePtr = FillSetFromVector(write, inWriteSet);
+    fd_set *exceptPtr = FillSetFromVector(except, inExceptSet);
+    timeval time;
+    time.tv_sec = 0;
+    time.tv_usec = 500;
+    int toRet = select(FD_SETSIZE, readPtr, writePtr, exceptPtr, nullptr);
+    if(toRet > 0)
+    {
+        FillVectorFromSet(outReadSet, inReadSet, read);
+        FillVectorFromSet(outWriteSet, inWriteSet, write);
+        FillVectorFromSet(outExceptSet, inExceptSet, except);
+    }
+    return toRet;
+}
+
 TCPSocket::~TCPSocket()
 {
     closesocket(mSocket);
@@ -241,4 +295,9 @@ int TCPSocket::Receive(void* inData, int inLen)
         return -SocketUtil::GetLastError();
     }
     return bytesReceivedCount;
+}
+
+int TCPSocket::SetOpt(int level, int optname, const char *optval, int optlen)
+{
+    return setsockopt(mSocket, level, optname, optval, optlen);
 }

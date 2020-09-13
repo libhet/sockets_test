@@ -1,6 +1,7 @@
 #include <iostream>
 #include <string>
 #include <memory>
+#include <vector>
 
 #include <WinSDKVer.h>
 #define _WIN32_WINNT _WIN32_WINNT_WIN7  // Устанавливаем минимальную поддерживаемую версию Windows
@@ -14,8 +15,8 @@
 
 enum SocketAddressFamily
 {
- INET = AF_INET,
- INET6 = AF_INET6
+    INET = AF_INET,
+    INET6 = AF_INET6
 };
 
 class UDPSocket;
@@ -32,12 +33,24 @@ public:
     static std::string GetLastErrorText();
     static UDPSocketPtr CreateUDPSocket(SocketAddressFamily inFamily);
     static TCPSocketPtr CreateTCPSocket(SocketAddressFamily inFamily);
+
+    static fd_set *FillSetFromVector(fd_set& outSet,const std::vector<TCPSocketPtr>* inSockets);
+    static void FillVectorFromSet(std::vector<TCPSocketPtr>* outSockets, const std::vector<TCPSocketPtr>* inSockets, const fd_set& inSet);
+
+    static int Select(const std::vector<TCPSocketPtr>* inReadSet,
+               std::vector<TCPSocketPtr>* outReadSet,
+               const std::vector<TCPSocketPtr>* inWriteSet,
+               std::vector<TCPSocketPtr>* outWriteSet,
+               const std::vector<TCPSocketPtr>* inExceptSet,
+               std::vector<TCPSocketPtr>* outExceptSet);
 };
 
 
 class SocketAddress
 {
 public:
+    SocketAddress() = default;
+
     SocketAddress(uint32_t inAddress, uint16_t inPort);
 
     SocketAddress(const sockaddr& inSockAddr);
@@ -90,9 +103,11 @@ public:
     std::shared_ptr<TCPSocket> Accept(SocketAddress& inFromAddress);
     int Send(const void* inData, int inLen);
     int Receive(void* inBuffer, int inLen);
+    int SetOpt(int level, int optname, const char *optval, int optlen);
 private:
     friend class SocketUtil;
     TCPSocket(SOCKET inSocket) : mSocket(inSocket) {}
     SOCKET mSocket;
 };
+
 
